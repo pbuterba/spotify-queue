@@ -45,6 +45,18 @@ def main() -> int:
 
     print(f'Insert "Almost Home" after "{current_song["name"]}"')
 
+    # Get insert location information
+    seconds_elapsed = ms_elapsed // 1000
+    ms_elapsed = ms_elapsed - (seconds_elapsed * 1000)
+
+    minutes_elapsed = seconds_elapsed // 60
+    seconds_elapsed = seconds_elapsed - (minutes_elapsed * 60)
+
+    hours_elapsed = minutes_elapsed // 60
+    minutes_elapsed = minutes_elapsed - (hours_elapsed * 60)
+
+    print(f'Insert location is {hours_elapsed}:{minutes_elapsed}:{seconds_elapsed}.{ms_elapsed}')
+
     for i in range(songs_skipped):
         spotify.previous_track(device_id='DEVICE_ID_REDACTED')
     spotify.pause_playback(device_id='DEVICE_ID_REDACTED')
