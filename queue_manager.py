@@ -33,14 +33,25 @@ def main() -> int:
         print('Insert "Almost Home" after "Home"')
 
     # Loop until end point
+    devices = spotify.devices()['devices']
+    phone = None
+    for device in devices:
+        if device['name'] == 'iPhone':
+            phone = device
+            break
+
+    if phone is None:
+        print('Could not find phone. Please make sure Spotify is open')
+        return 1
+
     print('Searching for insertion point...')
     while ms_elapsed < total_ms:
         queue = spotify.queue()
         current_song = queue['currently_playing']
         print(current_song["name"])
         ms_elapsed = ms_elapsed + current_song['duration_ms']
-        spotify.next_track(device_id='DEVICE_ID_REDACTED')
-        spotify.pause_playback(device_id='DEVICE_ID_REDACTED')
+        spotify.next_track(device_id=phone['id'])
+        spotify.pause_playback(device_id=phone['id'])
         songs_skipped = songs_skipped + 1
 
     print(f'Insert "Almost Home" after "{current_song["name"]}"')
@@ -58,27 +69,27 @@ def main() -> int:
     print(f'Insert location is {hours_elapsed}:{minutes_elapsed}:{seconds_elapsed}.{ms_elapsed}')
 
     for i in range(songs_skipped):
-        spotify.previous_track(device_id='DEVICE_ID_REDACTED')
-    spotify.pause_playback(device_id='DEVICE_ID_REDACTED')
+        spotify.previous_track(device_id=phone['id'])
+    spotify.pause_playback(device_id=phone['id'])
 
     # Add Home to queue
-    spotify.add_to_queue(home_uri, device_id='DEVICE_ID_REDACTED')
+    spotify.add_to_queue(home_uri, device_id=phone['id'])
     print('Added "Home" to queue')
 
     # Add current song to queue
     queue = spotify.queue()
     current_song = queue['currently_playing']
     current_uri = f'spotify:track:{current_song["id"]}'
-    spotify.add_to_queue(current_uri, device_id='DEVICE_ID_REDACTED')
-    print(f'Added {current_song["name"]} to queue')
+    spotify.add_to_queue(current_uri, device_id=phone['id'])
+    print(f'Added "{current_song["name"]}" to queue')
 
     # Add Almost Home to queue
-    spotify.add_to_queue(almost_home_uri, device_id='DEVICE_ID_REDACTED')
+    spotify.add_to_queue(almost_home_uri, device_id=phone['id'])
     print('Added "Almost Home" to queue')
 
     # Skip to start at "Home"
-    spotify.next_track(device_id='DEVICE_ID_REDACTED')
-    spotify.pause_playback(device_id='DEVICE_ID_REDACTED')
+    spotify.next_track(device_id=phone['id'])
+    spotify.pause_playback(device_id=phone['id'])
 
     return 0
 
