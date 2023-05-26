@@ -16,7 +16,7 @@ def main() -> int:
     duration_minutes = int(duration.split(':')[1])
     total_minutes = duration_minutes + (duration_hours * 60)
     total_ms = total_minutes * 60 * 1000
-    songs_skipped = 0
+    songs_skipped = 3
 
     # URIs for fixed tracks
     home_uri = 'spotify:track:2aMb1asq5acm7cDYlFsYhY'
@@ -50,17 +50,21 @@ def main() -> int:
         return 1
 
     # Loop until end point
+    print('Searching for insertion point...')
     while ms_elapsed < total_ms:
         queue = spotify.queue()
         current_song = queue['currently_playing']
-        print(f'Current song: {current_song["name"]}')
+        print(current_song["name"])
+        ms_elapsed = ms_elapsed + current_song['duration_ms']
         spotify.next_track(device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
         spotify.pause_playback(device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
-        queue = spotify.queue()
-        current_song = queue['currently_playing']
-        print(f'Current song: {current_song["name"]}')
+        songs_skipped = songs_skipped + 1
+
+    print(f'Insert "Almost Home" after {current_song["name"]}')
+
+    for i in range(songs_skipped):
         spotify.previous_track(device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
-        spotify.pause_playback(device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
+    spotify.pause_playback(device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
 
     return 0
 
