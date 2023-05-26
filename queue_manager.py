@@ -21,7 +21,21 @@ almost_home_uri = 'spotify:track:4c4Y0MvScCAI98Eum1dwOz'
 # Add Home to queue
 home = spotify.track(home_uri)
 spotify.add_to_queue(home_uri, device_id='DEVICE_ID_REDACTED')
+print('Added "Home" to queue')
 ms_elapsed = home['duration_ms']
+
+# Add current song to queue
+queue = spotify.queue()
+current_song = queue['currently_playing']
+current_uri = f'spotify:track:{current_song["id"]}'
+spotify.add_to_queue(current_uri, device_id='DEVICE_ID_REDACTED')
+print(f'Added {current_song["name"]} to queue')
+ms_elapsed = ms_elapsed + current_song['duration_ms']
+
+# Add Almost Home to queue
+almost_home = spotify.track(almost_home_uri)
+spotify.add_to_queue(almost_home_uri, device_id='DEVICE_ID_REDACTED')
+print('Added "Almost Home" to queue')
 
 while ms_elapsed < total_ms:
     queue = spotify.queue()
