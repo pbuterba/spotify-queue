@@ -45,6 +45,18 @@ def main() -> int:
 
     print(f'Insert "Almost Home" after "{current_song["name"]}"')
 
+    # Get insert location information
+    seconds_elapsed = ms_elapsed // 1000
+    ms_elapsed = ms_elapsed - (seconds_elapsed * 1000)
+
+    minutes_elapsed = seconds_elapsed // 60
+    seconds_elapsed = seconds_elapsed - (minutes_elapsed * 60)
+
+    hours_elapsed = minutes_elapsed // 60
+    minutes_elapsed = minutes_elapsed - (hours_elapsed * 60)
+
+    print(f'Insert location is {hours_elapsed}:{minutes_elapsed}:{seconds_elapsed}.{ms_elapsed}')
+
     for i in range(songs_skipped):
         spotify.previous_track(device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
     spotify.pause_playback(device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
@@ -58,7 +70,7 @@ def main() -> int:
     current_song = queue['currently_playing']
     current_uri = f'spotify:track:{current_song["id"]}'
     spotify.add_to_queue(current_uri, device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
-    print(f'Added {current_song["name"]} to queue')
+    print(f'Added "{current_song["name"]}" to queue')
 
     # Add Almost Home to queue
     spotify.add_to_queue(almost_home_uri, device_id='121affd97f452422d170f9cbe1f41191fcece3ec')
