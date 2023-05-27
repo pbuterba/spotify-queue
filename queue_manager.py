@@ -36,7 +36,7 @@ def main() -> int:
     devices = spotify.devices()['devices']
     phone = None
     for device in devices:
-        if device['name'] == 'iPhone':
+        if device['type'] == 'Smartphone':
             phone = device
             break
 
@@ -47,6 +47,18 @@ def main() -> int:
     print('Searching for insertion point...')
     while ms_elapsed < total_ms:
         queue = spotify.queue()
+        while queue['currently_playing'] is None:
+            print('Could not fetch current song. Try briefly playing and pausing music on your phone so that it is recognized as an active queue')
+            print('Press ENTER to try again. Press "E" followed by ENTER to cancel.')
+            keyboard = input()
+            if keyboard.lower() == 'e':
+                print('Aborting program')
+                return 0
+            elif keyboard.lower() == '':
+                queue = spotify.queue()
+            else:
+                print('Unrecognized command. Press ENTER to fetch queue again, press "E" followed by ENTER to end program')
+
         current_song = queue['currently_playing']
         print(current_song["name"])
         ms_elapsed = ms_elapsed + current_song['duration_ms']
