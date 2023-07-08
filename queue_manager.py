@@ -8,20 +8,20 @@
 """
 # Imports
 import sys
+from typing import Dict
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 
-def main() -> int:
-    # Set API scopes
-    scope = 'user-library-read user-read-playback-state user-modify-playback-state'
-
-    # Log into Spotify
-    spotify = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
-    print(f'Welcome, {spotify.current_user()["display_name"]}!')
-    print(f'Fetching your devices...')
-
+def get_device(spotify: spotipy.client) -> Dict | None:
+    """
+    @brief      Function that takes the user through a process of selecting which device to manage
+    @param      (Spotipy Client) spotify: An authenticated Spotipy client object
+    @return
+                - (Dict): A dictionary representing the device selected
+                - (None): The user cancelled the program
+    """
     # Get device list
     devices = spotify.devices()['devices']
     while len(devices) == 0:
@@ -29,7 +29,7 @@ def main() -> int:
         choice = input()
 
         if choice.lower() == 'e':
-            return 0
+            return None
 
         while choice != '':
             print(f'Invalid command {choice}. Valid commands are "E" or RETURN (no input)')
@@ -51,6 +51,27 @@ def main() -> int:
 
         device = devices[selection_index - 1]
         print(f'Selected "{device["name"]} ({device["type"]})')
+
+    return device
+
+
+def main() -> int:
+    """
+    @brief      Main program entrypoint. Allows a user to determine the optimal point to insert songs into their Spotify queue
+    @return:    (int)
+                - 0 if finished with no errors
+                - 1 if errors occurred
+    """
+    # Set API scopes
+    scope = 'user-library-read user-read-playback-state user-modify-playback-state'
+
+    # Log into Spotify
+    spotify = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
+    print(f'Welcome, {spotify.current_user()["display_name"]}!')
+    print(f'Fetching your devices...')
+
+    # Get user device selection
+    device = get_device(spotify)
 
     # Get duration information
     duration = input('Enter the duration to insert "Almost Home" at in hh:mm format: ')
