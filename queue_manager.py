@@ -19,6 +19,38 @@ def main() -> int:
 
     # Log into Spotify
     spotify = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
+    print(f'Welcome, {spotify.current_user()["display_name"]}!')
+    print(f'Fetching your devices...')
+
+    # Get device list
+    devices = spotify.devices()['devices']
+    while len(devices) == 0:
+        print('You have no active Spotify sessions. Please open and sign into Spotify on a device. Press RETURN to refresh. Enter "E" to exit')
+        choice = input()
+
+        if choice.lower() == 'e':
+            return 0
+
+        while choice != '':
+            print(f'Invalid command {choice}. Valid commands are "E" or RETURN (no input)')
+
+        devices = spotify.devices()['devices']
+
+    # Get the device selection
+    if len(devices) == 1:
+        device = devices[0]
+        print(f'Selected your device "{device["name"]}" ({device["type"]}). To use a different device, please open Spotify on that device, and restart this program')
+    else:
+        print('You have active Spotify sessions on the following devices: ')
+        for idx, device in enumerate(devices):
+            print(f'{idx + 1}. {device["name"]} ({device["type"]})')
+
+        selection_index = int(input('Please select the device for which you would like to manage the queue, by entering the number with which it is listed: '))
+        while selection_index < 1 or selection_index > len(devices):
+            selection_index = int(input(f'Please select a device between 1 and {len(devices)}'))
+
+        device = devices[selection_index - 1]
+        print(f'Selected "{device["name"]} ({device["type"]})')
 
     # Get duration information
     duration = input('Enter the duration to insert "Almost Home" at in hh:mm format: ')
@@ -43,17 +75,6 @@ def main() -> int:
         print('Insert "Almost Home" after "Home"')
 
     # Loop until end point
-    devices = spotify.devices()['devices']
-    phone = None
-    for device in devices:
-        if device['type'] == 'Smartphone':
-            phone = device
-            break
-
-    if phone is None:
-        print('Could not find phone. Please make sure Spotify is open')
-        return 1
-
     print('Searching for insertion point...')
     while ms_elapsed < total_ms:
         queue = spotify.queue()
@@ -72,8 +93,8 @@ def main() -> int:
         current_song = queue['currently_playing']
         print(current_song["name"])
         ms_elapsed = ms_elapsed + current_song['duration_ms']
-        spotify.next_track(device_id=phone['id'])
-        spotify.pause_playback(device_id=phone['id'])
+        spotify.next_track(device_id=device['id'])
+        spotify.pause_playback(device_id=device['id'])
         songs_skipped = songs_skipped + 1
 
     print(f'Insert "Almost Home" after "{current_song["name"]}"')
@@ -91,27 +112,27 @@ def main() -> int:
     print(f'Insert location is {hours_elapsed}:{minutes_elapsed}:{seconds_elapsed}.{ms_elapsed}')
 
     for i in range(songs_skipped):
-        spotify.previous_track(device_id=phone['id'])
-    spotify.pause_playback(device_id=phone['id'])
+        spotify.previous_track(device_id=device['id'])
+    spotify.pause_playback(device_id=device['id'])
 
     # Add Home to queue
-    spotify.add_to_queue(home_uri, device_id=phone['id'])
+    spotify.add_to_queue(home_uri, device_id=device['id'])
     print('Added "Home" to queue')
 
     # Add current song to queue
     queue = spotify.queue()
     current_song = queue['currently_playing']
     current_uri = f'spotify:track:{current_song["id"]}'
-    spotify.add_to_queue(current_uri, device_id=phone['id'])
+    spotify.add_to_queue(current_uri, device_id=device['id'])
     print(f'Added "{current_song["name"]}" to queue')
 
     # Add Almost Home to queue
-    spotify.add_to_queue(almost_home_uri, device_id=phone['id'])
+    spotify.add_to_queue(almost_home_uri, device_id=device['id'])
     print('Added "Almost Home" to queue')
 
     # Skip to start at "Home"
-    spotify.next_track(device_id=phone['id'])
-    spotify.pause_playback(device_id=phone['id'])
+    spotify.next_track(device_id=device['id'])
+    spotify.pause_playback(device_id=device['id'])
 
     return 0
 
