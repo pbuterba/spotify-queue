@@ -1,3 +1,12 @@
+"""
+@package    queue-manager
+@brief      This program allows for custom insertion of songs into existing Spotify queues
+
+@author     Preston Buterbaugh
+@date       5/25/2023
+@updated    7/8/2023
+"""
+# Imports
 import sys
 
 import spotipy
@@ -5,6 +14,7 @@ from spotipy.oauth2 import SpotifyOAuth
 
 
 def main() -> int:
+    # Set API scopes
     scope = 'user-library-read user-read-playback-state user-modify-playback-state'
 
     # Log into Spotify
