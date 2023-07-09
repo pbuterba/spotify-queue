@@ -14,6 +14,35 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 
+def confirmation() -> bool:
+    """
+    @brief      Function which allows the user to select from binary options using the ENTER key as "Yes" and entering an "E"
+                character as "No"
+    @return:    (bool) The option selected
+    """
+    choice = input()
+    if choice == '':
+        return True
+    elif choice.lower() == 'e':
+        return False
+    else:
+        print('Invalid command. Valid commands are "E" followed by RETURN, and RETURN (with no other input)')
+        return confirmation()
+
+
+def list_artists(song: Dict) -> str:
+    """
+    @brief      Represents a songs artists as a comma-separated list
+    @param      (Dict) song: A dictionary representing the song
+    @return:    (str): The comma-separated list of artists
+    """
+    string = ''
+    for artist in song['artists']:
+        string = string + artist['name'] + ', '
+
+    return string[:-2]
+
+
 def get_device(spotify: spotipy.client) -> Dict | None:
     """
     @brief      Function that takes the user through a process of selecting which device to manage
@@ -26,13 +55,9 @@ def get_device(spotify: spotipy.client) -> Dict | None:
     devices = spotify.devices()['devices']
     while len(devices) == 0:
         print('You have no active Spotify sessions. Please open and sign into Spotify on a device. Press RETURN to refresh. Enter "E" to exit')
-        choice = input()
-
-        if choice.lower() == 'e':
+        refresh = confirmation()
+        if not refresh:
             return None
-
-        while choice != '':
-            print(f'Invalid command {choice}. Valid commands are "E" or RETURN (no input)')
 
         devices = spotify.devices()['devices']
 
@@ -45,7 +70,13 @@ def get_device(spotify: spotipy.client) -> Dict | None:
         for idx, device in enumerate(devices):
             print(f'{idx + 1}. {device["name"]} ({device["type"]})')
 
-        selection_index = int(input('Please select the device for which you would like to manage the queue, by entering the number with which it is listed: '))
+        # Get choice
+        try:
+            selection_index = int(input('Please select the device for which you would like to manage the queue, by entering the number with which it is listed: '))
+        except ValueError:
+            selection_index = -1
+
+        # Validate index
         while selection_index < 1 or selection_index > len(devices):
             selection_index = int(input(f'Please select a device between 1 and {len(devices)}'))
 
@@ -53,6 +84,75 @@ def get_device(spotify: spotipy.client) -> Dict | None:
         print(f'Selected "{device["name"]} ({device["type"]})')
 
     return device
+
+
+def find_song(spotify: spotipy.client, title: str, artist: str) -> Dict | None:
+    """
+    @brief      Allows the user to find a specific song by name and artist, with album as a tie-breaking criterion
+    @param      (Spotipy Client) spotify: An authenticated Spotipy Client object
+    @param      (str) title: The title of the song being searched for
+    @param      (str) artist: The artist of the song being searched for
+    @return:
+                (Dict): A dictionary representing the song selected
+                (None): If the song could not be found, or the search was cancelled
+    """
+    query_title = title.replace(' ', '%20')
+    query_artist = artist.replace(' ', '%20')
+    results = spotify.search(q=f'{query_title}%20artist:{query_artist}')
+    songs = []
+    end_of_results = False
+    while not end_of_results:
+        # Check if this is the last page of results
+        if results['tracks']['next'] is None:
+            end_of_results = True
+
+        # Loop over current page of results
+        for result in results['tracks']['items']:
+            for result_artist in result['artists']:
+                if result_artist['name'] == artist:
+                    songs.append(result)
+
+        # Fetch next page of results
+        if not end_of_results:
+            results = spotify.search(q=f'{query_title}%20artist:{query_artist}', offset=results['tracks']['offset'] + results['tracks']['limit'])
+
+    # Case where no song with that artist is found
+    if not songs:
+        print(f'Couldn\'t find a song called "{title}" by "{artist}" on Spotify')
+        return None
+
+    # Case where only one track was found
+    if len(songs) == 1:
+        song = songs[0]
+        print(f'Found "{song["name"]}" by "{list_artists(song)}" - Album: {song["album"]["name"]}')
+        print('Add song to queue? Press RETURN to add, enter "E" to skip')
+        add = confirmation()
+        if add:
+            return song
+        else:
+            return None
+
+    # Case where multiple tracks were found
+    # List songs
+    print(f'The following songs match your search criteria: ')
+    for idx, song in enumerate(songs):
+        print(f'{idx + 1}. {song["name"]} - {list_artists(song)} ({song["album"]["name"]})')
+
+    # Get choice
+    try:
+        selected_index = int(input('Please select which song you would like to add, by typing the number with which it is listed. Enter 0 to find a new song'))
+    except ValueError:
+        selected_index = -1
+
+    # Validate index
+    while selected_index < 0 or selected_index > len(songs):
+        selected_index = int(input(f'Selection must be between 0 and {len(songs)}'))
+
+    # Return selected song
+    if selected_index == 0:
+        return None
+    else:
+        return songs[selected_index - 1]
 
 
 def main() -> int:
@@ -72,6 +172,18 @@ def main() -> int:
 
     # Get user device selection
     device = get_device(spotify)
+
+    # Continue adding songs until user enters empty song title
+    title = input('Enter the title of a song to add to the queue: ')
+    while title != '':
+        # Get artist
+        artist = input(f'Enter the artist for "{title}": ')
+
+        # Search for the song
+        song = find_song(spotify, title, artist)
+
+        # Get next song title
+        print('Enter the title of another song, or press RETURN to exit')
 
     # Get duration information
     duration = input('Enter the duration to insert "Almost Home" at in hh:mm format: ')
