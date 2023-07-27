@@ -32,7 +32,7 @@ def confirmation() -> bool:
 
 def list_artists(song: Dict) -> str:
     """
-    @brief      Represents a songs artists as a comma-separated list
+    @brief      Represents a song's artists as a comma-separated list
     @param      (Dict) song: A dictionary representing the song
     @return:    (str): The comma-separated list of artists
     """
@@ -65,7 +65,6 @@ def ms_to_str(ms: int) -> str:
     @param      (int) ms: The total number of milliseconds to represent as a string
     @return:    (str): The duration represented as a string hh:mm:ss.ms
     """
-    # Calculate individual values
     seconds = ms // 1000
     ms = ms - (seconds * 1000)
 
@@ -75,19 +74,7 @@ def ms_to_str(ms: int) -> str:
     hours = minutes // 60
     minutes = minutes - (hours * 60)
 
-    # Add leading zeros
-    if minutes < 10:
-        minutes = f'0{minutes}'
-
-    if seconds < 10:
-        seconds = f'0{seconds}'
-
-    if ms < 10:
-        ms = f'00{ms}'
-    elif ms < 100:
-        ms = f'0{ms}'
-
-    return f'{hours}:{minutes}:{seconds}.{ms}'
+    return f'{hours}:{str(minutes).zfill(2)}:{str(seconds).zfill(2)}.{str(ms).zfill(3)}'
 
 
 def get_device(spotify: spotipy.client) -> Dict | None:
@@ -158,6 +145,7 @@ def find_song(spotify: spotipy.client, title: str, artist: str) -> Dict | None:
             for result_artist in result['artists']:
                 if result_artist['name'] == artist:
                     songs.append(result)
+                    break
 
         # Fetch next page of results
         if not end_of_results:
