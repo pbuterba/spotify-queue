@@ -166,7 +166,12 @@ def find_song(spotify: spotipy.client, title: str, artist: str) -> Dict | None:
     # Case where no song with that artist is found
     if not songs:
         print(f'Couldn\'t find a song called "{title}" by "{artist}" on Spotify')
-        return None
+        print('If you know the URI for the song, paste it here. Otherwise press RETURN to search for a new song')
+        uri = input()
+        if uri == '':
+            return None
+        else:
+            return spotify.track(uri)
 
     # Case where only one track was found
     if len(songs) == 1:
@@ -187,7 +192,7 @@ def find_song(spotify: spotipy.client, title: str, artist: str) -> Dict | None:
 
     # Get choice
     try:
-        selected_index = int(input('Please select which song you would like to add, by typing the number with which it is listed. Enter 0 to find a new song'))
+        selected_index = int(input('Please select which song you would like to add, by typing the number with which it is listed. Enter 0 to find a new song: '))
     except ValueError:
         selected_index = -1
 
@@ -305,24 +310,28 @@ def main() -> int:
         print('Enter the title of another song, or press RETURN to exit')
         title = input()
 
-    # Add Home to queue
-    spotify.add_to_queue(home_uri, device_id=device['id'])
-    print('Added "Home" to queue')
+    # Add starting song to queue
+    if starting_song is not None:
+        spotify.add_to_queue(starting_song['uri'], device_id=device['id'])
+        print(f'Added "{starting_song["name"]}" to queue')
 
-    # Add current song to queue
-    queue = spotify.queue()
-    current_song = queue['currently_playing']
-    current_uri = f'spotify:track:{current_song["id"]}'
-    spotify.add_to_queue(current_uri, device_id=device['id'])
-    print(f'Added "{current_song["name"]}" to queue')
+        # Add current song to queue
+        queue = spotify.queue()
+        current_song = queue['currently_playing']
+        current_uri = current_song['uri']
+        spotify.add_to_queue(current_uri, device_id=device['id'])
+        print(f'Added "{current_song["name"]}" to queue')
 
-    # Add Almost Home to queue
-    spotify.add_to_queue(almost_home_uri, device_id=device['id'])
-    print('Added "Almost Home" to queue')
+    # Add remaining songs to queue
+    for insert_song in insert_after_list.keys():
+        song = insert_after_list[insert_song]
+        print(f'Insert {song["name"]} after {insert_song}')
+        spotify.add_to_queue(song['uri'], device_id=device['id'])
 
-    # Skip to start at "Home"
-    spotify.next_track(device_id=device['id'])
-    spotify.pause_playback(device_id=device['id'])
+    # Skip to start at starting song
+    if starting_song is not None:
+        spotify.next_track(device_id=device['id'])
+        spotify.pause_playback(device_id=device['id'])
 
     return 0
 
