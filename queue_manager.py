@@ -195,6 +195,18 @@ def find_song(spotify: spotipy.client, title: str, artist: str) -> Dict | None:
         return songs[selected_index - 1]
 
 
+def add_song_durations(song_list: List) -> int:
+    """
+    @brief      Adds up and returns the total duration of a list of songs
+    @param      (List) song_list: A list of Spotify Track objects
+    @return:    (int) The sum of each of the durations of the songs in song_list, in milliseconds
+    """
+    duration = 0
+    for song in song_list:
+        duration = duration + song['duration_ms']
+    return duration
+
+
 def main() -> int:
     """
     @brief      Main program entrypoint. Allows a user to determine the optimal point to insert songs into their Spotify queue
@@ -215,8 +227,7 @@ def main() -> int:
 
     # Set up variables to track what songs will be added to the queue
     insert_after_list = {}
-    starting_song = None
-    starting_ms = 0
+    starting_songs = []
 
     # Continue adding songs until user enters empty song title
     title = input('Enter the title of a song to add to the queue: ')
@@ -236,74 +247,69 @@ def main() -> int:
                 print('Improperly formatted duration. Please try again')
                 total_ms = str_to_ms(input())
 
-            # Check for duration of zero if a starting song has already been set
-            while total_ms == 0 and starting_song is not None:
-                print(f'"{starting_song["name"]} is already set as the starting song. Please enter a new duration:')
-                total_ms = str_to_ms(input())
-
-                # Check for improperly formatted duration
-                while total_ms == -1:
-                    print('Improperly formatted duration. Please try again')
-                    total_ms = str_to_ms(input())
-
             # Check if song is inserted at the beginning or in the middle of the queue
-            if total_ms > 0:
+            if total_ms == 0:
+                print(f'"{song["name"]}" will be inserted at the beginning of the queue')
+                starting_songs.append(song)
+            else:
                 # Set tracking variables
-                ms_elapsed = starting_ms
+                ms_elapsed = add_song_durations(starting_songs)
                 songs_skipped = 0
 
-                # Loop until end point
-                print('Searching for insertion point...')
-                while ms_elapsed < total_ms:
-                    # Get queue
-                    queue = spotify.queue()
-                    while queue['currently_playing'] is None:
-                        print('Could not fetch current song. Try briefly playing and pausing music on your phone so that it is recognized as an active queue')
-                        print('Press RETURN to try again. Enter the value "E" to exit the program.')
-                        check = confirmation()
-                        if not check:
-                            return 0
+                # Check if the songs to be added at the beginning make the insertion point impossible
+                if ms_elapsed > total_ms:
+                    print(f'Cannot insert {title} at {ms_to_str(total_ms)} because the total lengths of all the songs you have selected to insert at the beginning of the queue exceeds this time')
+                else:
+                    # Loop until end point
+                    print('Searching for insertion point...')
+                    while ms_elapsed < total_ms:
+                        # Get queue
+                        queue = spotify.queue()
+                        while queue['currently_playing'] is None:
+                            print('Could not fetch current song. Try briefly playing and pausing music on your phone so that it is recognized as an active queue')
+                            print('Once you have done this, press RETURN to try again. Enter the value "E" to exit the program.')
+                            check = confirmation()
+                            if not check:
+                                print('Done. No songs added to queue')
+                                return 0
 
-                    # Get current song
-                    current_song = queue['currently_playing']
-                    print(current_song["name"])
-                    ms_elapsed = ms_elapsed + current_song['duration_ms']
+                        # Get current song
+                        current_song = queue['currently_playing']
+                        print(current_song["name"])
+                        ms_elapsed = ms_elapsed + current_song['duration_ms']
 
-                    # Check if song is meant to have another song inserted after it
-                    if current_song['name'] in insert_after_list.keys():
-                        ms_elapsed = ms_elapsed + insert_after_list[current_song['name']]
+                        # Check if song is going to have another song inserted after it
+                        if current_song['name'] in insert_after_list.keys():
+                            current_song = insert_after_list[current_song['name']]
+                        else:
+                            # Skip to next song
+                            spotify.next_track(device_id=device['id'])
+                            spotify.pause_playback(device_id=device['id'])
+                            songs_skipped = songs_skipped + 1
 
-                    # Skip to next song
-                    spotify.next_track(device_id=device['id'])
+                    # Get insert location information
+                    duration_string = ms_to_str(ms_elapsed)
+
+                    # Output insertion location
+                    print(f'Insert "{song["name"]}" after "{current_song["name"]}" ({duration_string})')
+                    insert_after_list[current_song['name']] = song
+
+                    # Skip back to the beginning of the queue
+                    for i in range(songs_skipped):
+                        spotify.previous_track(device_id=device['id'])
                     spotify.pause_playback(device_id=device['id'])
-                    songs_skipped = songs_skipped + 1
-
-                # Get insert location information
-                duration_string = ms_to_str(ms_elapsed)
-
-                # Output insertion location
-                print(f'Insert "{song["name"]}" after "{current_song["name"]}" ({duration_string})')
-                insert_after_list[current_song['name']] = song
-
-                for i in range(songs_skipped):
-                    spotify.previous_track(device_id=device['id'])
-                spotify.pause_playback(device_id=device['id'])
-            else:
-                # Song is inserted at the beginning of the queue
-                print(f'"{song["name"]}" will be inserted at the beginning of the queue')
-                starting_song = song
-                starting_ms = song['duration_ms']
 
         # Get next song title
         print('Enter the title of another song, or press RETURN to exit')
         title = input()
 
     # Add starting song to queue
-    if starting_song is not None:
-        spotify.add_to_queue(starting_song['uri'], device_id=device['id'])
-        print(f'Added "{starting_song["name"]}" to queue')
+    for song in starting_songs:
+        spotify.add_to_queue(song['uri'], device_id=device['id'])
+        print(f'Added "{song["name"]}" to queue')
 
-        # Add current song to queue
+    # Add current song to queue if any songs were added at the very beginning of the queue
+    if len(starting_songs) > 0:
         queue = spotify.queue()
         current_song = queue['currently_playing']
         current_uri = current_song['uri']
@@ -317,7 +323,7 @@ def main() -> int:
         spotify.add_to_queue(song['uri'], device_id=device['id'])
 
     # Skip to start at starting song
-    if starting_song is not None:
+    if len(starting_songs) > 0:
         spotify.next_track(device_id=device['id'])
         spotify.pause_playback(device_id=device['id'])
 
