@@ -8,7 +8,7 @@
 """
 # Imports
 import sys
-from typing import Dict
+from typing import List, Dict
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
